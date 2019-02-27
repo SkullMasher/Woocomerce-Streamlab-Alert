@@ -26,12 +26,12 @@ app.use((req, res, next) => { // redirect if there's a trailing slash in url
 })
 
 // functions
-const postMerchAlert = (token, res) => {
+const postMerchAlert = (token, message, userMessage, res) => {
   axios.post(`${STREAMLABS_API_BASE}/alerts`, {
     'access_token': token,
     'type': 'merch',
-    'message': `${merchAlert.name} a acheté un tee shirt`,
-    'user_message': `${merchAlert.message}`
+    'message': message,
+    'user_message': userMessage
   })
     .then((response) => {
       // return res.send(`<pre>${JSON.stringify(response.data.data, undefined, 4)}</pre>`)
@@ -126,17 +126,19 @@ app.post('/alert', (req, res) => {
 
   if (orderStatus === 'completed') {
     const token = getToken()
+    const message = `MisterMV a acheté sur le magasin`
+    const userMessage = `Le message personalisé de l'utilisateur`
 
     if (token) {
-      return postMerchAlert(token, res)
+      return postMerchAlert(token, message, userMessage, res)
     } else {
       console.log(`App is not authorize`)
     }
 
     console.log(`Show alert for order ${orderID}`)
   }
-  // res.send(JSON.stringify(req.body))
-  res.send(orderStatus)
+  res.send(JSON.stringify(`Show alert for order ${orderID}`))
+  // res.send(orderStatus)
 })
 
 app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
