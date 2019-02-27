@@ -7,11 +7,15 @@ require('dotenv').config()
 
 const express = require('express')
 const app = express()
-const port = 3000
+const bodyParser = require('body-parser')
 const sqlite3 = require('sqlite3').verbose()
 const db = new sqlite3.Database('./db.sqlite')
 const axios = require('axios')
 const STREAMLABS_API_BASE = 'https://www.streamlabs.com/api/v1.0'
+
+// Middlewares
+app.use(bodyParser.json()) // for parsing application/json
+app.use(bodyParser.urlencoded({ extended: true })) // for parsing
 
 // functions
 const postMerchAlert = (token, res) => {
@@ -32,9 +36,9 @@ const postMerchAlert = (token, res) => {
 // Routing
 app.get('/', (req, res) => {
   db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS `streamlabs_auth` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `access_token` CHAR(50), `refresh_token` CHAR(50))")
+    db.run('CREATE TABLE IF NOT EXISTS `streamlabs_auth` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `access_token` CHAR(50), `refresh_token` CHAR(50))')
 
-    db.get("SELECT * FROM `streamlabs_auth`", (err, row) => {
+    db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
       if (row) {
         // post the alert
         postMerchAlert(row.access_token, res)
@@ -58,7 +62,7 @@ app.get('/', (req, res) => {
 })
 
 app.get('/auth', (req, res) => {
-  let code = req.query.code
+  const code = req.query.code
 
   axios.post(`${STREAMLABS_API_BASE}/token?`, {
     'grant_type': 'authorization_code',
@@ -67,7 +71,7 @@ app.get('/auth', (req, res) => {
     'redirect_uri': process.env.REDIRECT_URI,
     'code': code
   }).then((response) => {
-    db.run("INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)", [response.data.access_token, response.data.refresh_token], () => {
+    db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
       res.redirect('/')
     })
   }).catch((error) => {
@@ -75,4 +79,9 @@ app.get('/auth', (req, res) => {
   })
 })
 
-app.listen(port, () => console.log(`App listening on port ${port}!`))
+app.post('/alert', (req, res) => {
+  console.log(req.body)
+  res.send(JSON.stringify(req.body))
+})
+
+app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
