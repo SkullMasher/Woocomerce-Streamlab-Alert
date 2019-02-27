@@ -26,11 +26,43 @@ const postMerchAlert = (token, res) => {
     'user_message': `${merchAlert.message}`
   })
     .then((response) => {
-      return res.send(`<pre>${JSON.stringify(response.data.data, undefined, 4)}</pre>`)
+      // return res.send(`<pre>${JSON.stringify(response.data.data, undefined, 4)}</pre>`)
+      return res.send(`Alerte envoyé !`)
     }).catch((error) => {
       console.log(error)
       return res.send('Érreur lors de l\'envoi de l\'alerte')
     })
+}
+
+const authorizeApp = (res) => {
+  let authorizeURL = `${STREAMLABS_API_BASE}/authorize?`
+  const params = {
+    'client_id': process.env.CLIENT_ID,
+    'redirect_uri': process.env.REDIRECT_URI,
+    'response_type': 'code',
+    'scope': 'alerts.create'
+  }
+
+  // Generate authorize URL with params
+  authorizeURL += Object.keys(params).map(k => `${k}=${params[k]}`).join('&')
+
+  res.send(`<a href="${authorizeURL}">Cliquer ici</a> pour autoriser cette application à poster des alertes sur votre stream`)
+}
+
+const saveToken = (code, res) => {
+  axios.post(`${STREAMLABS_API_BASE}/token?`, {
+    'grant_type': 'authorization_code',
+    'client_id': process.env.CLIENT_ID,
+    'client_secret': process.env.CLIENT_SECRET,
+    'redirect_uri': process.env.REDIRECT_URI,
+    'code': code
+  }).then((response) => {
+    db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
+      return res.redirect('/')
+    })
+  }).catch((error) => {
+    console.error(error)
+  })
 }
 
 // Routing
@@ -40,22 +72,15 @@ app.get('/', (req, res) => {
 
     db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
       if (row) {
-        // post the alert
+        // Post a merch alert
         postMerchAlert(row.access_token, res)
       } else {
-        let authorizeURL = `${STREAMLABS_API_BASE}/authorize?`
+        // Ask for authorization
+        authorizeApp(res)
+      }
 
-        let params = {
-          'client_id': process.env.CLIENT_ID,
-          'redirect_uri': process.env.REDIRECT_URI,
-          'response_type': 'code',
-          'scope': 'alerts.create'
-        }
-
-        // not encoding params
-        authorizeURL += Object.keys(params).map(k => `${k}=${params[k]}`).join('&')
-
-        res.send(`<a href="${authorizeURL}">Cliquer ici</a> pour autoriser cette application à poster des alertes sur votre stream`)
+      if (err) {
+        console.error(err)
       }
     })
   })
@@ -63,25 +88,20 @@ app.get('/', (req, res) => {
 
 app.get('/auth', (req, res) => {
   const code = req.query.code
-
-  axios.post(`${STREAMLABS_API_BASE}/token?`, {
-    'grant_type': 'authorization_code',
-    'client_id': process.env.CLIENT_ID,
-    'client_secret': process.env.CLIENT_SECRET,
-    'redirect_uri': process.env.REDIRECT_URI,
-    'code': code
-  }).then((response) => {
-    db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
-      res.redirect('/')
-    })
-  }).catch((error) => {
-    console.log(error)
-  })
+  if (code) {
+    return saveToken(code, res)
+  } else {
+    res.redirect('/')
+  }
 })
 
 app.post('/alert', (req, res) => {
   console.log(req.body)
   res.send(JSON.stringify(req.body))
+})
+
+app.get('/alert', (req, res) => {
+  res.send('topkek')
 })
 
 app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
