@@ -108,8 +108,10 @@ app.get('/alert', (req, res) => {
 })
 
 app.post('/alert', (req, res) => {
-  console.log(req.body)
-  res.send(JSON.stringify(req.body))
+  const productStatus = req.body.status
+  console.log(productStatus)
+  // res.send(JSON.stringify(req.body))
+  res.send(productStatus)
 })
 
 app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
