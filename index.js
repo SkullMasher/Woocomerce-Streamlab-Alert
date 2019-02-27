@@ -16,6 +16,14 @@ const STREAMLABS_API_BASE = 'https://www.streamlabs.com/api/v1.0'
 // Middlewares
 app.use(bodyParser.json()) // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })) // for parsing
+app.use((req, res, next) => { // redirect if there's a trailing slash in url
+  const test = /\?[^]*\//.test(req.url)
+  if (req.url.substr(-1) === '/' && req.url.length > 1 && !test) {
+    res.redirect(301, req.url.slice(0, -1))
+  } else {
+    next()
+  }
+})
 
 // functions
 const postMerchAlert = (token, res) => {
