@@ -73,6 +73,21 @@ const saveToken = (code, res) => {
   })
 }
 
+const getToken = () => {
+  db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
+    if (err) {
+      console.error(err)
+      return false
+    }
+
+    if (row) {
+      return row.access_token
+    } else {
+      return false
+    }
+  })
+}
+
 // Routing
 app.get('/', (req, res) => {
   db.serialize(() => {
@@ -97,21 +112,31 @@ app.get('/', (req, res) => {
 app.get('/auth', (req, res) => {
   const code = req.query.code
   if (code) {
+    console.log(`App authorized with code : ${code}`)
     return saveToken(code, res)
   } else {
-    res.redirect('/')
+    console.log(`Authorization failed`)
+    return res.redirect('/')
   }
 })
 
-app.get('/alert', (req, res) => {
-  res.send('topkek')
-})
-
 app.post('/alert', (req, res) => {
-  const productStatus = req.body.status
-  console.log(productStatus)
+  const orderID = req.body.id
+  const orderStatus = req.body.status
+
+  if (orderStatus === 'completed') {
+    const token = getToken()
+
+    if (token) {
+      return postMerchAlert(token, res)
+    } else {
+      console.log(`App is not authorize`)
+    }
+
+    console.log(`Show alert for order ${orderID}`)
+  }
   // res.send(JSON.stringify(req.body))
-  res.send(productStatus)
+  res.send(orderStatus)
 })
 
 app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
