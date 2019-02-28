@@ -13,18 +13,16 @@ app.use(bodyParser.json()) // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })) // for parsing
 
 // functions
-const postMerchAlert = (token, message, userMessage, res) => {
+const postMerchAlert = (token, message, res) => {
   const postURL = `${STREAMLABS_API_BASE}/alerts`
   const postParam = {
     'access_token': token,
     'type': 'merch',
-    'message': message,
-    'user_message': userMessage
+    'message': message
   }
 
   axios.post(postURL, postParam)
     .then((response) => {
-      // return res.send(`<pre>${JSON.stringify(response.data.data, undefined, 4)}</pre>`)
       return JSON.stringify(`Alerte envoyé !`)
     }).catch((error) => {
       console.log(error)
@@ -112,15 +110,17 @@ app.get('/auth', (req, res) => {
 })
 
 app.post('/alert', (req, res) => {
+  console.log(req.body.status)
   if (req.body.status === 'completed') {
     const orderID = req.body.id
+    // const username = req.body.billing_information
     const message = `MisterMV a acheté sur le magasin`
-    const userMessage = `Le message personalisé de l'utilisateur`
+    // const userMessage = `Le message personalisé de l'utilisateur`
 
     getToken
       .then(token => {
         if (token) {
-          postMerchAlert(token, message, userMessage, res)
+          postMerchAlert(token, message, res)
           console.log(`Show alert for order ${orderID}`)
           return res.send(JSON.stringify(`Show alert for order ${orderID}`))
         } else {
