@@ -116,10 +116,8 @@ app.get('/auth', (req, res) => {
 })
 
 app.post('/alert', (req, res) => {
-  const orderID = req.body.id
-  const orderStatus = req.body.status
-
-  if (orderStatus === 'completed') {
+  if (req.body.status === 'completed') {
+    const orderID = req.body.id
     const message = `MisterMV a acheté sur le magasin`
     const userMessage = `Le message personalisé de l'utilisateur`
 
@@ -136,4 +134,6 @@ app.post('/alert', (req, res) => {
   }
 })
 
-app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
+app.listen(process.env.PORT, () => {
+  console.log(`Woocommerce streamlabs alert listening on port ${process.env.PORT}!`)
+})
