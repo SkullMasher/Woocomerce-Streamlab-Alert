@@ -89,12 +89,9 @@ app.get('/', (req, res) => {
 
     db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
       if (row) {
-        // Post a merch alert
-        // postMerchAlert(row.access_token, res)
         res.send(`OK ! Vous pouvez maintenant fermer cette page`)
       } else {
-        // Ask for authorization
-        authorizeApp(res)
+        authorizeApp(res)// Ask for authorization
       }
 
       if (err) {
