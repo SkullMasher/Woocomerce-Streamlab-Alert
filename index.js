@@ -132,5 +132,5 @@ app.post('/alert', (req, res) => {
 })
 
 app.listen(process.env.PORT, () => {
-  console.log(`Woocommerce streamlabs alert listening on port ${process.env.PORT}!`)
+  console.log(`Woocommerce streamlabs alert started on port ${process.env.PORT}`)
 })
