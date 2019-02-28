@@ -11,29 +11,24 @@ const STREAMLABS_API_BASE = 'https://www.streamlabs.com/api/v1.0'
 // Middlewares
 app.use(bodyParser.json()) // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })) // for parsing
-app.use((req, res, next) => { // redirect if there's a trailing slash in url
-  const test = /\?[^]*\//.test(req.url)
-  if (req.url.substr(-1) === '/' && req.url.length > 1 && !test) {
-    res.redirect(301, req.url.slice(0, -1))
-  } else {
-    next()
-  }
-})
 
 // functions
 const postMerchAlert = (token, message, userMessage, res) => {
-  axios.post(`${STREAMLABS_API_BASE}/alerts`, {
+  const postURL = `${STREAMLABS_API_BASE}/alerts`
+  const postParam = {
     'access_token': token,
     'type': 'merch',
     'message': message,
     'user_message': userMessage
-  })
+  }
+
+  axios.post(postURL, postParam)
     .then((response) => {
       // return res.send(`<pre>${JSON.stringify(response.data.data, undefined, 4)}</pre>`)
-      return res.send(`Alerte envoyé !`)
+      return JSON.stringify(`Alerte envoyé !`)
     }).catch((error) => {
       console.log(error)
-      return res.send('Érreur lors de l\'envoi de l\'alerte')
+      return JSON.stringify('Érreur lors de l\'envoi de l\'alerte')
     })
 }
 
@@ -53,19 +48,23 @@ const authorizeApp = (res) => {
 }
 
 const saveToken = (code, res) => {
-  axios.post(`${STREAMLABS_API_BASE}/token?`, {
+  const postURL = `${STREAMLABS_API_BASE}/token?`
+  const postParam = {
     'grant_type': 'authorization_code',
     'client_id': process.env.CLIENT_ID,
     'client_secret': process.env.CLIENT_SECRET,
     'redirect_uri': process.env.REDIRECT_URI,
     'code': code
-  }).then((response) => {
-    db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
-      return res.redirect('/')
+  }
+
+  axios.post(postURL, postParam)
+    .then((response) => {
+      db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
+        return res.redirect('/')
+      })
+    }).catch((error) => {
+      console.error(error)
     })
-  }).catch((error) => {
-    console.error(error)
-  })
 }
 
 const getToken = new Promise((resolve, reject) => {
@@ -118,16 +117,18 @@ app.post('/alert', (req, res) => {
     const message = `MisterMV a acheté sur le magasin`
     const userMessage = `Le message personalisé de l'utilisateur`
 
-    getToken.then(token => {
-      if (token) {
-        postMerchAlert(token, message, userMessage, res)
-        console.log(`Show alert for order ${orderID}`)
-        return res.send(JSON.stringify(`Show alert for order ${orderID}`))
-      } else {
-        console.log(`App is not authorize`)
-        res.send(JSON.stringify(`App is not authorize`))
-      }
-    }).catch(err => console.error(err))
+    getToken
+      .then(token => {
+        if (token) {
+          postMerchAlert(token, message, userMessage, res)
+          console.log(`Show alert for order ${orderID}`)
+          return res.send(JSON.stringify(`Show alert for order ${orderID}`))
+        } else {
+          console.log(`App is not authorize`)
+          res.send(JSON.stringify(`App is not authorize`))
+        }
+      })
+      .catch(err => console.error(err))
   }
 })
 
