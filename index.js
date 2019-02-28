@@ -1,9 +1,4 @@
-const merchAlert = {
-  'name': 'Mister MV',
-  'message': 'Incroyable du cul !'
-}
-
-require('dotenv').config()
+require('dotenv').config() // Load .env file with app settings
 
 const express = require('express')
 const app = express()
@@ -73,20 +68,19 @@ const saveToken = (code, res) => {
   })
 }
 
-const getToken = () => {
+const getToken = new Promise((resolve, reject) => {
   db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
     if (err) {
-      console.error(err)
-      return false
+      reject(err)
     }
 
     if (row) {
-      return row.access_token
+      resolve(row.access_token)
     } else {
-      return false
+      reject(new Error('db table seems to be empty'))
     }
   })
-}
+})
 
 // Routing
 app.get('/', (req, res) => {
@@ -96,7 +90,8 @@ app.get('/', (req, res) => {
     db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
       if (row) {
         // Post a merch alert
-        postMerchAlert(row.access_token, res)
+        // postMerchAlert(row.access_token, res)
+        res.send(`OK ! Vous pouvez maintenant fermer cette page`)
       } else {
         // Ask for authorization
         authorizeApp(res)
@@ -121,24 +116,30 @@ app.get('/auth', (req, res) => {
 })
 
 app.post('/alert', (req, res) => {
-  const orderID = req.body.id
-  const orderStatus = req.body.status
+  // const orderID = req.body.id
+  // const orderStatus = req.body.status
 
-  if (orderStatus === 'completed') {
-    const token = getToken()
-    const message = `MisterMV a acheté sur le magasin`
-    const userMessage = `Le message personalisé de l'utilisateur`
+  getToken.then(token => console.log(token))
+            .catch(err => console.error(err))
 
-    if (token) {
-      return postMerchAlert(token, message, userMessage, res)
-    } else {
-      console.log(`App is not authorize`)
-    }
-
-    console.log(`Show alert for order ${orderID}`)
-  }
-  res.send(JSON.stringify(`Show alert for order ${orderID}`))
-  // res.send(orderStatus)
+  // if (orderStatus === 'completed') {
+  //   getToken()
+  //     .then(token => {
+  //       console.log(token)
+  //       const message = `MisterMV a acheté sur le magasin`
+  //       const userMessage = `Le message personalisé de l'utilisateur`
+  //       console.log(token)
+  //       if (token) {
+  //         postMerchAlert(token, message, userMessage, res)
+  //         console.log(`Show alert for order ${orderID}`)
+  //         return res.send(JSON.stringify(`Show alert for order ${orderID}`))
+  //       } else {
+  //         console.log(`App is not authorize`)
+  //         res.send(JSON.stringify(`App is not authorize`))
+  //       }
+  //     })
+  //     .catch(err => console.error(err))
+  // }
 })
 
 app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
