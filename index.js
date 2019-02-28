@@ -116,30 +116,24 @@ app.get('/auth', (req, res) => {
 })
 
 app.post('/alert', (req, res) => {
-  // const orderID = req.body.id
-  // const orderStatus = req.body.status
+  const orderID = req.body.id
+  const orderStatus = req.body.status
 
-  getToken.then(token => console.log(token))
-            .catch(err => console.error(err))
+  if (orderStatus === 'completed') {
+    const message = `MisterMV a acheté sur le magasin`
+    const userMessage = `Le message personalisé de l'utilisateur`
 
-  // if (orderStatus === 'completed') {
-  //   getToken()
-  //     .then(token => {
-  //       console.log(token)
-  //       const message = `MisterMV a acheté sur le magasin`
-  //       const userMessage = `Le message personalisé de l'utilisateur`
-  //       console.log(token)
-  //       if (token) {
-  //         postMerchAlert(token, message, userMessage, res)
-  //         console.log(`Show alert for order ${orderID}`)
-  //         return res.send(JSON.stringify(`Show alert for order ${orderID}`))
-  //       } else {
-  //         console.log(`App is not authorize`)
-  //         res.send(JSON.stringify(`App is not authorize`))
-  //       }
-  //     })
-  //     .catch(err => console.error(err))
-  // }
+    getToken.then(token => {
+      if (token) {
+        postMerchAlert(token, message, userMessage, res)
+        console.log(`Show alert for order ${orderID}`)
+        return res.send(JSON.stringify(`Show alert for order ${orderID}`))
+      } else {
+        console.log(`App is not authorize`)
+        res.send(JSON.stringify(`App is not authorize`))
+      }
+    }).catch(err => console.error(err))
+  }
 })
 
 app.listen(process.env.PORT, () => console.log(`Woocomerce streamlabs alert listening on port ${process.env.PORT}!`))
