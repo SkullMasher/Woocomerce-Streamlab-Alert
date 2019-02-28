@@ -110,8 +110,9 @@ app.get('/auth', (req, res) => {
 })
 
 app.post('/alert', (req, res) => {
-  console.log(req.body.status)
-  if (req.body.status === 'completed') {
+  console.log(req.body)
+  // pending processing completed
+  if (req.body.status === 'processing') {
     const orderID = req.body.id
     // const username = req.body.billing_information
     const message = `MisterMV a acheté sur le magasin`
