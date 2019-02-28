@@ -110,13 +110,11 @@ app.get('/auth', (req, res) => {
 })
 
 app.post('/alert', (req, res) => {
-  console.log(req.body)
   // pending processing completed
   if (req.body.status === 'processing') {
     const orderID = req.body.id
-    // const username = req.body.billing_information
-    const message = `MisterMV a acheté sur le magasin`
-    // const userMessage = `Le message personalisé de l'utilisateur`
+    const username = req.body.billing.first_name
+    const message = `${username} a acheté un produit sur le magasin`
 
     getToken
       .then(token => {
