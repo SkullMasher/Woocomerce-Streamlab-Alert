@@ -12,7 +12,7 @@ Create your config file
 ```
 cp .env.sample .env
 ```
-Create an sqlite database at the root of the project
+Create an sqlite database file at the root of the project
 ```
 touch db.sqlite
 ```
@@ -20,6 +20,13 @@ Start the app
 ```
 node index.js
 ```
+
+Point your woocommerce webhooks to `https://yoururl.eu/alert`
+
+Point your streamlab application Redirect URI
+ to `https://yoururl.eu/auth` don't forget to whitelist your user (no support for multiple account for now).
+
+Navigate to `https://yoururl.eu` to authorize the app and generate an access token.
 
 ## Ressources
 
