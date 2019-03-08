@@ -2,6 +2,7 @@ require('dotenv').config() // Load .env file with app settings
 
 const express = require('express')
 const app = express()
+const port = process.env.PORT || 3000;
 const bodyParser = require('body-parser')
 const sqlite3 = require('sqlite3').verbose()
 const db = new sqlite3.Database('./db.sqlite')
@@ -132,6 +133,6 @@ app.post('/alert', (req, res) => {
   }
 })
 
-app.listen(process.env.PORT, () => {
-  console.log(`Woocommerce streamlabs alert started on port ${process.env.PORT}`)
+app.listen(port, () => {
+  console.log(`Woocommerce streamlabs alert started on port ${port}`)
 })
