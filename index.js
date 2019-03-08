@@ -74,7 +74,7 @@ const getToken = new Promise((resolve, reject) => {
     if (row) {
       resolve(row.access_token)
     } else {
-      reject(new Error('db table seems to be empty'))
+      reject(new Error('db table seems to be empty. You probably need to authorize'))
     }
   })
 })
@@ -107,6 +107,10 @@ app.get('/auth', (req, res) => {
     console.log(`Authorization failed`)
     return res.redirect('/')
   }
+})
+
+app.get('/alert', (req, res) => {
+  res.send('This route allow woocommerce to find this page and create a hook')
 })
 
 app.post('/alert', (req, res) => {
