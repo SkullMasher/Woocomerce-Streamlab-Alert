@@ -131,7 +131,7 @@ app.post('/alert', (req, res) => {
         }
       })
       .catch(err => console.error(err))
-  } esle {
+  } else {
     return JSON.stringify('Hello There')
   }
 })
