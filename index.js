@@ -120,7 +120,7 @@ app.post('/alert', (req, res) => {
         if (token) {
           postMerchAlert(token, message, res)
           console.log(`Show alert for order ${orderID}`)
-          return JSON.stringify(`Show alert for order ${orderID}`)
+          return res.send(`Show alert for order ${orderID}`)
         } else {
           console.log(`App is not authorize`)
           return res.send(401, `App is not authorize`)
@@ -128,7 +128,7 @@ app.post('/alert', (req, res) => {
       })
       .catch(err => console.error(err))
   } else {
-    return res.send(400)
+    return res.sendStatus(200)
   }
 })
 
