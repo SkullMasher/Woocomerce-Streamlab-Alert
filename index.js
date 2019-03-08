@@ -21,7 +21,7 @@ const postMerchAlert = (token, message, res) => {
     'message': message
   }
 
-  axios.post(postURL, postParam)
+  return axios.post(postURL, postParam)
     .then((response) => {
       return JSON.stringify(`Alerte envoyé !`)
     }).catch((error) => {
@@ -55,7 +55,7 @@ const saveToken = (code, res) => {
     'code': code
   }
 
-  axios.post(postURL, postParam)
+  return axios.post(postURL, postParam)
     .then((response) => {
       db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
         return res.redirect('/')
@@ -86,9 +86,9 @@ app.get('/', (req, res) => {
 
     db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
       if (row) {
-        res.send(`OK ! Vous pouvez maintenant fermer cette page`)
+        return res.send(`OK ! Vous pouvez maintenant fermer cette page`)
       } else {
-        authorizeApp(res)// Ask for authorization
+        return authorizeApp(res)// Ask for authorization
       }
 
       if (err) {
@@ -109,10 +109,6 @@ app.get('/auth', (req, res) => {
   }
 })
 
-app.get('/alert', (req, res) => {
-  res.send('This route allow woocommerce to find this page and create a hook')
-})
-
 app.post('/alert', (req, res) => {
   if (req.body.status === 'pending') { // pending processing completed
     const orderID = req.body.id
@@ -127,12 +123,12 @@ app.post('/alert', (req, res) => {
           return JSON.stringify(`Show alert for order ${orderID}`)
         } else {
           console.log(`App is not authorize`)
-          return JSON.stringify(`App is not authorize`)
+          return res.send(401, `App is not authorize`)
         }
       })
       .catch(err => console.error(err))
   } else {
-    return JSON.stringify('Hello There')
+    return res.send(400)
   }
 })
 
