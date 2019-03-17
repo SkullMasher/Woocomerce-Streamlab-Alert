@@ -1,13 +1,22 @@
 require('dotenv').config() // Load .env file with app settings
 
+const fs = require('fs')
+const path = require('path')
+const util = require('util')
 const express = require('express')
 const app = express()
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000
 const bodyParser = require('body-parser')
 const sqlite3 = require('sqlite3').verbose()
 const db = new sqlite3.Database('./db.sqlite')
 const axios = require('axios')
 const STREAMLABS_API_BASE = 'https://www.streamlabs.com/api/v1.0'
+const logFile = fs.createWriteStream(path.join(__dirname, '/app.log'), { flags: 'w' })
+
+const logToFile = d => {
+  logFile.write(util.format(d) + '\n')
+  process.stdout.write(util.format(d) + '\n') // same as console.log
+}
 
 // Middlewares
 app.use(bodyParser.json()) // for parsing application/json
@@ -26,7 +35,7 @@ const postMerchAlert = (token, message, res) => {
     .then((response) => {
       return JSON.stringify(`Alerte envoyé !`)
     }).catch((error) => {
-      console.log(error)
+      logToFile(error)
       return JSON.stringify('Érreur lors de l\'envoi de l\'alerte')
     })
 }
@@ -39,11 +48,10 @@ const authorizeApp = (res) => {
     'response_type': 'code',
     'scope': 'alerts.create'
   }
-
   // Generate authorize URL with params
   authorizeURL += Object.keys(params).map(k => `${k}=${params[k]}`).join('&')
 
-  res.send(`<a href="${authorizeURL}">Cliquer ici</a> pour autoriser cette application à poster des alertes sur votre stream`)
+  return res.send(`<a href="${authorizeURL}">Cliquer ici</a> pour autoriser cette application à poster des alertes sur votre stream`)
 }
 
 const saveToken = (code, res) => {
@@ -66,34 +74,31 @@ const saveToken = (code, res) => {
     })
 }
 
-const getToken = new Promise((resolve, reject) => {
-  db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
-    if (err) {
-      reject(err)
-    }
-
-    if (row) {
-      resolve(row.access_token)
-    } else {
-      reject(new Error('db table seems to be empty. You probably need to authorize'))
-    }
-  })
-})
-
+const getToken = () => { // To provide a function with promise functionality, simply have it return a promise
+  return new Promise((resolve, reject) => {
+    db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
+      if (row) {
+        logToFile(row.access_token)
+        resolve(row.access_token)
+      } else {
+        reject(err)
+      }
+    })
+  }).catch(err => console.log(err))
+}
 // Routing
 app.get('/', (req, res) => {
   db.serialize(() => {
     db.run('CREATE TABLE IF NOT EXISTS `streamlabs_auth` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `access_token` CHAR(50), `refresh_token` CHAR(50))')
 
     db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
-      if (row) {
-        return res.send(`OK ! Vous pouvez maintenant fermer cette page`)
+      if (err) {
+        return logToFile(err)
+      } else if (row.access_token) {
+        logToFile(row.access_token)
+        return res.send(`OK ! access_token actuel : row.access_token`)
       } else {
         return authorizeApp(res)// Ask for authorization
-      }
-
-      if (err) {
-        console.error(err)
       }
     })
   })
@@ -102,10 +107,12 @@ app.get('/', (req, res) => {
 app.get('/auth', (req, res) => {
   const code = req.query.code
   if (code) {
-    console.log(`App authorized with code : ${code}`)
-    return saveToken(code, res)
+    saveToken(code, res)
+
+    logToFile(`App authorized with code : ${code}`)
+    return res.send(`App authorized with code : ${code}`)
   } else {
-    console.log(`Authorization failed`)
+    logToFile('Authorization failed on /auth')
     return res.redirect('/')
   }
 })
@@ -120,10 +127,10 @@ app.post('/alert', (req, res) => {
       .then(token => {
         if (token) {
           postMerchAlert(token, message, res)
-          console.log(`Show alert for order ${orderID}`)
+          logToFile(`Show alert for order ${orderID}`)
           return res.send(`Show alert for order ${orderID}`)
         } else {
-          console.log(`App is not authorize`)
+          logToFile('/alert - App is not authorize')
           return res.send(401, `App is not authorize`)
         }
       })
@@ -134,5 +141,5 @@ app.post('/alert', (req, res) => {
 })
 
 app.listen(port, () => {
-  console.log(`Woocommerce streamlabs alert started on port ${port}`)
+  logToFile(`Woocommerce streamlabs alert started on port ${port}`)
 })
