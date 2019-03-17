@@ -102,7 +102,7 @@ app.get('/', (req, res) => {
         logToFile(row.access_token)
         return res.send(`OK ! Current access_token : ${row.access_token}`)
       } else {
-        return authorizeApp(res)// Ask for authorization
+        return authorizeApp(res)
       }
     })
   })
