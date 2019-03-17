@@ -54,7 +54,7 @@ const authorizeApp = (res) => {
   return res.send(`<a href="${authorizeURL}">Cliquer ici</a> pour autoriser cette application à poster des alertes sur votre stream`)
 }
 
-const saveToken = (code, res) => {
+const saveToken = (code) => {
   const postURL = `${STREAMLABS_API_BASE}/token?`
   const postParam = {
     'grant_type': 'authorization_code',
@@ -66,11 +66,15 @@ const saveToken = (code, res) => {
 
   return axios.post(postURL, postParam)
     .then((response) => {
-      db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
-        return res.redirect('/')
+      const accessToken = response.data.access_token
+      const refreshToken = response.data.refresh_token
+
+      db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [accessToken, refreshToken], () => {
+        return accessToken
       })
-    }).catch((error) => {
-      console.error(error)
+    }).catch((err) => {
+      logToFile(err)
+      return 'Error: Cloud not Save token'
     })
 }
 
@@ -94,9 +98,9 @@ app.get('/', (req, res) => {
     db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
       if (err) {
         return logToFile(err)
-      } else if (row.access_token) {
+      } else if (row) {
         logToFile(row.access_token)
-        return res.send(`OK ! access_token actuel : row.access_token`)
+        return res.send(`OK ! Current access_token : ${row.access_token}`)
       } else {
         return authorizeApp(res)// Ask for authorization
       }
@@ -106,13 +110,18 @@ app.get('/', (req, res) => {
 
 app.get('/auth', (req, res) => {
   const code = req.query.code
-  if (code) {
-    saveToken(code, res)
 
-    logToFile(`App authorized with code : ${code}`)
-    return res.send(`App authorized with code : ${code}`)
+  if (code) {
+    return saveToken(code)
+      .then(result => {
+        logToFile(`App authorized with code : ${code}`)
+        return res.send(`App authorized with code : ${code}`)
+      })
+      .catch(err => {
+        logToFile(err)
+        return res.send('Error: Could not save token')
+      })
   } else {
-    logToFile('Authorization failed on /auth')
     return res.redirect('/')
   }
 })
