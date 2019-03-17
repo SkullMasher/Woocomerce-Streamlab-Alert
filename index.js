@@ -32,8 +32,9 @@ const postMerchAlert = (token, message, res) => {
   }
 
   return axios.post(postURL, postParam)
-    .then((response) => {
-      return JSON.stringify(`Alerte envoyé !`)
+    .then(response => {
+      // return JSON.stringify(`Alerte envoyé !`)
+      return response
     }).catch((error) => {
       logToFile(error)
       return JSON.stringify('Érreur lors de l\'envoi de l\'alerte')
@@ -65,7 +66,7 @@ const saveToken = (code) => {
   }
 
   return axios.post(postURL, postParam)
-    .then((response) => {
+    .then(response => {
       const accessToken = response.data.access_token
       const refreshToken = response.data.refresh_token
 
@@ -99,7 +100,7 @@ app.get('/', (req, res) => {
       if (err) {
         return logToFile(err)
       } else if (row) {
-        logToFile(row.access_token)
+        logToFile(`Current access_token : ${row.access_token}`)
         return res.send(`OK ! Current access_token : ${row.access_token}`)
       } else {
         return authorizeApp(res)
@@ -132,17 +133,20 @@ app.post('/alert', (req, res) => {
     const username = req.body.billing.first_name
     const message = `${username} a acheté un produit sur le magasin`
 
-    getToken
+    getToken()
       .then(token => {
-        if (token) {
-          postMerchAlert(token, message, res)
-          logToFile(`Show alert for order ${orderID}`)
-          return res.send(`Show alert for order ${orderID}`)
-        } else {
-          logToFile('/alert - App is not authorize')
-          return res.send(401, `App is not authorize`)
-        }
+        return postMerchAlert(token, message, res)
       })
+      .then(result => {
+        logToFile(result)
+        logToFile(`Show alert for order ${orderID}`)
+        return res.send(`Show alert for order ${orderID}`)
+      })
+      //   } else {
+      //     logToFile('/alert - App is not authorize')
+      //     return res.send(401, `App is not authorize`)
+      //   }
+      // })
       .catch(err => console.error(err))
   } else {
     return res.sendStatus(200)
