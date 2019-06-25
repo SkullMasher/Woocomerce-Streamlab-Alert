@@ -91,6 +91,7 @@ const getToken = () => { // To provide a function with promise functionality, si
     })
   }).catch(err => console.log(err))
 }
+
 // Routing
 app.get('/', (req, res) => {
   db.serialize(() => {
