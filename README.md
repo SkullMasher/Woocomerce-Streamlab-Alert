@@ -8,7 +8,7 @@ Install nodeJS dependencies
 ```
 npm i
 ```
-Create your config file
+Create & edit your config file
 ```
 cp .env.sample .env
 ```
