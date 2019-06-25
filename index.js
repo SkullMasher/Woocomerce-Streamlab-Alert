@@ -1,13 +1,22 @@
 require('dotenv').config() // Load .env file with app settings
 
+const fs = require('fs')
+const path = require('path')
+const util = require('util')
 const express = require('express')
 const app = express()
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000
 const bodyParser = require('body-parser')
 const sqlite3 = require('sqlite3').verbose()
 const db = new sqlite3.Database('./db.sqlite')
 const axios = require('axios')
 const STREAMLABS_API_BASE = 'https://www.streamlabs.com/api/v1.0'
+const logFile = fs.createWriteStream(path.join(__dirname, '/app.log'), { flags: 'w' })
+
+const logToFile = d => {
+  logFile.write(util.format(d) + '\n')
+  process.stdout.write(util.format(d) + '\n') // same as console.log
+}
 
 // Middlewares
 app.use(bodyParser.json()) // for parsing application/json
@@ -23,10 +32,11 @@ const postMerchAlert = (token, message, res) => {
   }
 
   return axios.post(postURL, postParam)
-    .then((response) => {
-      return JSON.stringify(`Alerte envoyé !`)
+    .then(response => {
+      // return JSON.stringify(`Alerte envoyé !`)
+      return response
     }).catch((error) => {
-      console.log(error)
+      logToFile(error)
       return JSON.stringify('Érreur lors de l\'envoi de l\'alerte')
     })
 }
@@ -39,14 +49,13 @@ const authorizeApp = (res) => {
     'response_type': 'code',
     'scope': 'alerts.create'
   }
-
   // Generate authorize URL with params
   authorizeURL += Object.keys(params).map(k => `${k}=${params[k]}`).join('&')
 
-  res.send(`<a href="${authorizeURL}">Cliquer ici</a> pour autoriser cette application à poster des alertes sur votre stream`)
+  return res.send(`<a href="${authorizeURL}">Cliquer ici</a> pour autoriser cette application à poster des alertes sur votre stream`)
 }
 
-const saveToken = (code, res) => {
+const saveToken = (code) => {
   const postURL = `${STREAMLABS_API_BASE}/token?`
   const postParam = {
     'grant_type': 'authorization_code',
@@ -57,43 +66,44 @@ const saveToken = (code, res) => {
   }
 
   return axios.post(postURL, postParam)
-    .then((response) => {
-      db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [response.data.access_token, response.data.refresh_token], () => {
-        return res.redirect('/')
+    .then(response => {
+      const accessToken = response.data.access_token
+      const refreshToken = response.data.refresh_token
+
+      db.run('INSERT INTO `streamlabs_auth` (access_token, refresh_token) VALUES (?,?)', [accessToken, refreshToken], () => {
+        return accessToken
       })
-    }).catch((error) => {
-      console.error(error)
+    }).catch((err) => {
+      logToFile(err)
+      return 'Error: Cloud not Save token'
     })
 }
 
-const getToken = new Promise((resolve, reject) => {
-  db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
-    if (err) {
-      reject(err)
-    }
-
-    if (row) {
-      resolve(row.access_token)
-    } else {
-      reject(new Error('db table seems to be empty. You probably need to authorize'))
-    }
-  })
-})
-
+const getToken = () => { // To provide a function with promise functionality, simply have it return a promise
+  return new Promise((resolve, reject) => {
+    db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
+      if (row) {
+        logToFile(row.access_token)
+        resolve(row.access_token)
+      } else {
+        reject(err)
+      }
+    })
+  }).catch(err => console.log(err))
+}
 // Routing
 app.get('/', (req, res) => {
   db.serialize(() => {
     db.run('CREATE TABLE IF NOT EXISTS `streamlabs_auth` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `access_token` CHAR(50), `refresh_token` CHAR(50))')
 
     db.get('SELECT * FROM `streamlabs_auth`', (err, row) => {
-      if (row) {
-        return res.send(`OK ! Vous pouvez maintenant fermer cette page`)
-      } else {
-        return authorizeApp(res)// Ask for authorization
-      }
-
       if (err) {
-        console.error(err)
+        return logToFile(err)
+      } else if (row) {
+        logToFile(`Current access_token : ${row.access_token}`)
+        return res.send(`OK ! Current access_token : ${row.access_token}`)
+      } else {
+        return authorizeApp(res)
       }
     })
   })
@@ -101,11 +111,18 @@ app.get('/', (req, res) => {
 
 app.get('/auth', (req, res) => {
   const code = req.query.code
+
   if (code) {
-    console.log(`App authorized with code : ${code}`)
-    return saveToken(code, res)
+    return saveToken(code)
+      .then(result => {
+        logToFile(`App authorized with code : ${code}`)
+        return res.send(`App authorized with code : ${code}`)
+      })
+      .catch(err => {
+        logToFile(err)
+        return res.send('Error: Could not save token')
+      })
   } else {
-    console.log(`Authorization failed`)
     return res.redirect('/')
   }
 })
@@ -116,17 +133,20 @@ app.post('/alert', (req, res) => {
     const username = req.body.billing.first_name
     const message = `${username} a acheté un produit sur le magasin`
 
-    getToken
+    getToken()
       .then(token => {
-        if (token) {
-          postMerchAlert(token, message, res)
-          console.log(`Show alert for order ${orderID}`)
-          return res.send(`Show alert for order ${orderID}`)
-        } else {
-          console.log(`App is not authorize`)
-          return res.send(401, `App is not authorize`)
-        }
+        return postMerchAlert(token, message, res)
       })
+      .then(result => {
+        logToFile(result)
+        logToFile(`Show alert for order ${orderID}`)
+        return res.send(`Show alert for order ${orderID}`)
+      })
+      //   } else {
+      //     logToFile('/alert - App is not authorize')
+      //     return res.send(401, `App is not authorize`)
+      //   }
+      // })
       .catch(err => console.error(err))
   } else {
     return res.sendStatus(200)
@@ -134,5 +154,5 @@ app.post('/alert', (req, res) => {
 })
 
 app.listen(port, () => {
-  console.log(`Woocommerce streamlabs alert started on port ${port}`)
+  logToFile(`Woocommerce streamlabs alert started on port ${port}`)
 })
